@@ -352,7 +352,7 @@ function parseSpeech(text,kids){
 /* ---------- store (Supabase) ---------- */
 const CFG={url:'https://soiaoubbxxyyevdvioqr.supabase.co',key:'sb_publishable_0jMFeXaoRnrbR6TnZzEdng_S6061cca'};
 const COLLS=['members','tx','requests','fixed'];
-const ST={token:LS.get('mf_token',null),meId:LS.get('mf_me',null),rev:0,online:true,ready:false,d:{family:null,members:{},tx:{},requests:{},fixed:{}}};
+const ST={token:LS.get('mf_token',null),meId:LS.get('mf_me',null),fam:LS.get('mf_fam',null),rev:0,online:true,ready:false,d:{family:null,members:{},tx:{},requests:{},fixed:{}}};
 let Q=LS.get('mf_queue',[])||[];
 const RC={},RCL={};
 (function(){const c=LS.get('mf_cache',null);if(c&&ST.token){Object.assign(ST.d,c.d||{});ST.rev=c.rev||0}})();
@@ -378,6 +378,8 @@ function applyLocal(op,coll,id,data){
 }
 function applyPull(r,full){
   ST.meId=r.me;LS.set('mf_me',r.me);
+  if(r.fam&&r.fam!==ST.fam){ST.fam=r.fam;LS.set('mf_fam',r.fam);rtStart()}
+  const fresh=full?[]:(r.docs||[]).filter(x=>x.coll==='tx'&&!x.deleted&&x.data&&x.data.by!==r.me&&!ST.d.tx[x.id]);
   ST.d.family=r.family;
   const M={};(r.members||[]).forEach(m=>{M[m.id]=m});ST.d.members=M;
   if(full){ST.d.tx={};ST.d.requests={};ST.d.fixed={}}
@@ -385,7 +387,20 @@ function applyPull(r,full){
   ST.rev=r.rev||ST.rev;
   Q.forEach(o=>applyLocal(o.op,o.coll,o.id,o.data));
   saveCache();
+  if(fresh.length&&ST.ready){const t=fresh[fresh.length-1].data;toast(`${nm(t.by)}: ${txLabel(t)} ${num(+t.amount||0)} ${cur()}${fresh.length>1?` (+${dg(fresh.length-1)})`:''}`);try{navigator.vibrate&&navigator.vibrate(80)}catch(e){}}
 }
+/* live: a tiny "something changed" ping on a Supabase Realtime broadcast channel named by the family id; the data itself still comes through pull() */
+let RT=null,RTlib=null;
+function rtStart(){
+  if(RT||!ST.fam||!ST.token)return;
+  if(!window.supabase){if(!RTlib){RTlib=document.createElement('script');RTlib.src='https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2.45.4/dist/umd/supabase.min.js';RTlib.onload=rtStart;RTlib.onerror=()=>{RTlib=null};document.head.appendChild(RTlib)}return}
+  try{const sb=window.supabase.createClient(CFG.url,CFG.key,{auth:{persistSession:false,autoRefreshToken:false}});
+    RT=sb.channel('mf-'+ST.fam,{config:{broadcast:{self:false}}});RT._sb=sb;
+    RT.on('broadcast',{event:'ch'},()=>pull()).subscribe();
+  }catch(e){RT=null}
+}
+function rtPing(){try{if(RT)RT.send({type:'broadcast',event:'ch',payload:{}})}catch(e){}}
+function rtStop(){try{if(RT)RT._sb.removeChannel(RT)}catch(e){}RT=null}
 let pulling=false;
 async function pull(full){
   if(!ST.token||pulling)return;pulling=true;
@@ -414,7 +429,7 @@ async function flush(){
     Q.shift();saveQ();
   }
   flushing=false;changed();
-  if(!Q.length)pull(bad);
+  if(!Q.length){rtPing();pull(bad)}
 }
 async function W(op,coll,id,data){
   applyLocal(op,coll,id,data);
@@ -425,6 +440,7 @@ async function W(op,coll,id,data){
 function resetData(){ST.rev=0;ST.ready=false;ST.d={family:null,members:{},tx:{},requests:{},fixed:{}};LS.set('mf_cache',null)}
 function signOut(expired){
   const t=ST.token;
+  rtStop();ST.fam=null;LS.set('mf_fam',null);
   ST.token=null;ST.meId=null;Q=[];saveQ();resetData();
   LS.set('mf_token',null);LS.set('mf_me',null);
   S.sheet=null;S.tab='home';S.auth=expired?'login':null;S.picking=false;
@@ -433,9 +449,10 @@ function signOut(expired){
   if(expired)toast('محتاج تدخل تاني برقمك والرقم السري','bad');
 }
 function setSession(r){
+  if(r.family_id!==ST.fam){rtStop();ST.fam=r.family_id;LS.set('mf_fam',r.family_id)}
   resetData();ST.token=r.token;ST.meId=r.member_id;LS.set('mf_token',r.token);LS.set('mf_me',r.member_id);
   S.tab='home';S.sheet=null;S.auth=null;S.picking=false;S.f={};
-  render();pull(true);
+  render();pull(true);rtStart();
 }
 /* ---------- formatting ---------- */
 function dg(s){s=String(s);return P.digits==='ar'?s.replace(/\d/g,d=>AR_D[d]).replace(/,/g,'٬').replace(/\./g,'٫'):s}
@@ -1219,7 +1236,8 @@ async function doSwitch(id,pin){
 function init(){
   render();
   if(ST.token){pull(!ST.rev);flush()}
-  setInterval(()=>{if(ST.token&&document.visibilityState==='visible'){if(Q.length)flush();else pull()}},10000);
+  rtStart();
+  setInterval(()=>{if(ST.token&&document.visibilityState==='visible'){if(Q.length)flush();else pull();if(!RT)rtStart()}},5000);
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible'&&ST.token){flush();pull()}});
   window.addEventListener('online',()=>{ST.online=true;flush();pull()});
   window.addEventListener('offline',()=>{ST.online=false;changed()});
