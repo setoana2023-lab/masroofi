@@ -1,5 +1,5 @@
 // App shell cache. Pages: network first, fall back to cache when offline. Supabase calls are never cached.
-const CACHE = 'masroofi-v3';
+const CACHE = 'masroofi-v4';
 const SHELL = ['./', 'index.html', 'manifest.webmanifest', 'icon-192.png', 'icon-512.png'];
 self.addEventListener('install', e => {
   e.waitUntil(caches.open(CACHE).then(c => c.addAll(SHELL)).then(() => self.skipWaiting()));

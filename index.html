@@ -474,7 +474,8 @@ const fem=m=>m&&(m.role==='wife'||m.role==='daughter'||m.role==='helper');
 const g=(m,a,b)=>fem(m)?b:a;
 const walletOf=m=>isParent(m)?'home':m.id;
 function mem(id){return ST.d.members[id]}
-function nm(id){if(id==='home')return 'البيت';const m=mem(id);return m?m.name:'—'}
+function wifeName(){const w=membersBy(m=>m.role==='wife')[0];return w?w.name:'الزوجة'}
+function nm(id){if(id==='home')return wifeName();const m=mem(id);return m?m.name:'—'}
 function membersBy(f){return Object.entries(ST.d.members).filter(([,m])=>!m.off&&(!f||f(m))).map(([id,m])=>Object.assign({id},m))}
 function txAll(){return Object.entries(ST.d.tx).map(([id,t])=>Object.assign({id},t)).sort((a,b)=>b.at-a.at)}
 function visibleTx(me){const all=txAll();return isParent(me)?all:all.filter(t=>t.from===me.id||t.to===me.id)}
@@ -641,8 +642,8 @@ function spouseV(me){
 function homeV(me){
   const p=[alertsV(me),spouseV(me),envV(me)];
   if(me.role==='husband'){
-    p.push(`<div class="grid2"><button class="btn pri big" data-a="openPay"><span class="bi">💵</span>ادفع مصروف</button><button class="btn big alt" data-a="openRec"><span class="bi">✍️</span>سجّل مصروف</button></div>`);
-    p.push(remindersV(me),paceV(),catBarsV(),recentV(me,5));
+    p.push(`<button class="btn pri big full" data-a="openPay"><span class="bi">💵</span>ادفع لـ ${esc(wifeName())}</button>`);
+    p.push(liveV(me),remindersV(me),paceV(),catBarsV());
   } else if(me.role==='wife'){
     p.push(`<div class="grid2"><button class="btn pri big" data-a="openVoice"><span class="bi">🎤</span>اتكلمي</button><button class="btn big alt" data-a="openRec"><span class="bi">✍️</span>اكتبي</button></div>`);
     p.push(quickV(me),remindersV(me),todayV(me),reqV(me));
@@ -655,8 +656,8 @@ function homeV(me){
 }
 function envV(me){
   const w=walletOf(me),b=bal(w),st=balState(me,b);
-  const lbl=me.role==='husband'?'رصيد البيت':me.role==='wife'?'الفلوس اللي معاكي للبيت':isKid(me)?'فلوسي':'العُهدة اللي معاكي';
-  const chip=st==='bad'?`<span class="chip bad">⚠️ ${isParent(me)?'البيت محتاج '+num(-b)+' '+cur():'الفلوس خلصت'}</span>`:st==='warn'?`<span class="chip warn">🪙 الرصيد قرب يخلص</span>`:`<span class="chip good">💰 الرصيد كويس</span>`;
+  const lbl=me.role==='husband'?`الفلوس اللي مع ${esc(wifeName())}`:me.role==='wife'?'الفلوس اللي معاكي للبيت':isKid(me)?'فلوسي':'العُهدة اللي معاكي';
+  const chip=st==='bad'?`<span class="chip bad">⚠️ ${me.role==='husband'?esc(wifeName())+' محتاجة '+num(-b)+' '+cur():isParent(me)?'محتاجة '+num(-b)+' '+cur()+' كمان':'الفلوس خلصت'}</span>`:st==='warn'?`<span class="chip warn">🪙 الرصيد قرب يخلص</span>`:`<span class="chip good">💰 الرصيد كويس</span>`;
   let sub='';
   if(isParent(me)){const ps=periodStart(new Date()),s=periodStats(ps,periodEnd(ps));sub=`<div class="env-sub">من أول الشهر: دخل ${money(s.dep,'')} · اتصرف ${money(s.exp,'')}</div>`}
   return `<section class="env s-${st}" aria-label="${lbl}"><div class="env-lbl">${lbl}</div><div class="amt">${money(b)}</div><div class="env-st">${chip}<button class="ghost" data-a="speakBal">🔊 اسمع</button></div>${sub}</section>`;
@@ -727,6 +728,12 @@ function rowV(t,me){
   if(t.type==='expense'){sign='−';cls='neg'}else if(t.to===w){sign='+';cls='pos'}else if(t.from===w){sign='−';cls='neg'}else{sign='+';cls='pos'}
   const badges=(hasReceipt(t)?' 📷':'')+((t.edits||[]).length?' ✏️':'')+((t.thread||[]).length?' 💬':'');
   return `<button class="row ${t.deleted?'del':''}" data-a="openTx" data-id="${t.id}"><span class="ic" aria-hidden="true">${txIcon(t)}</span><span class="rmain"><span class="rt">${esc(txLabel(t))}</span><span class="rs">${esc(nm(t.by))} · ${tm(t.at)}${badges}</span></span><span class="ramt ${cls}"><bdi>${sign}${num(t.amount)}</bdi></span></button>`;
+}
+function liveV(me){
+  const T=visibleTx(me).filter(t=>!t.deleted).slice(0,15);
+  const w=esc(wifeName());
+  if(!T.length) return `<div class="card"><h2>🟢 مصاريف ${w} لحظة بلحظة</h2><div class="empty"><span class="e">🧾</span><span>أول ما ${w} تسجّل أي مصروف هيظهر هنا على طول.</span></div></div>`;
+  return `<div class="card"><div class="card-h"><h2>🟢 مصاريف ${w} لحظة بلحظة</h2><button class="linkbtn" data-a="tab" data-t="list">الكل</button></div><div class="rows">${T.map(t=>rowV(t,me)).join('')}</div></div>`;
 }
 function recentV(me,n){
   const T=visibleTx(me).filter(t=>!t.deleted).slice(0,n);
@@ -892,8 +899,8 @@ function payV(s,me){
   if(s.to==='home'&&b<0&&a>0) note=a<=-b?`هيغطي جزء من السالب. هيفضل ${moneyT(b+a)}.`:`هيتغطى ${moneyT(-b)} سالب، والباقي ${moneyT(a+b)} يبقى رصيد.`;
   if(!hus&&a>b&&a>0) note='المبلغ أكبر من رصيد البيت، والرصيد هيبقى بالسالب.';
   const qs=s.to==='home'?[500,1000,2000].concat(+fam().monthly?[+fam().monthly]:[]):[20,50,100,200];
-  return `${sheetHead(hus?'تدفع كام؟':'تدّي كام من البيت؟')}
-  <div class="rowflex">${hus?`<button class="chip ${s.to==='home'?'on':''}" data-a="payTo" data-id="home">🏠 البيت</button>`:''}${targets.map(m=>`<button class="chip ${s.to===m.id?'on':''}" data-a="payTo" data-id="${m.id}">${EM[m.role]} ${esc(m.name)}</button>`).join('')}</div>
+  return `${sheetHead(hus?(s.to==='home'?`تدفع كام لـ ${esc(wifeName())}؟`:'تدفع كام؟'):'تدّي كام من البيت؟')}
+  <div class="rowflex">${hus?`<button class="chip ${s.to==='home'?'on':''}" data-a="payTo" data-id="home">👩 ${esc(wifeName())}</button>`:''}${targets.map(m=>`<button class="chip ${s.to===m.id?'on':''}" data-a="payTo" data-id="${m.id}">${EM[m.role]} ${esc(m.name)}</button>`).join('')}</div>
   ${s.to==='home'?`<div class="rowflex"><button class="chip ${s.kind==='monthly'?'on':''}" data-a="payKind" data-v="monthly">مصروف الشهر</button><button class="chip ${s.kind!=='monthly'?'on':''}" data-a="payKind" data-v="support">دعم إضافي</button></div>`:''}
   ${amtDisplay(s.amount)}<div class="quick">${qs.map(q=>`<button data-a="qa" data-v="${q}">${num(q)}</button>`).join('')}</div>${keypadV()}
   <label class="fld">ملاحظة (اختياري)<input class="inp" id="p_note" maxlength="80" placeholder="مثلاً: عشان هدوم المدرسة"></label>
@@ -1046,7 +1053,7 @@ const A={
   pinOk(){const s=S.sheet;if(s.v.length>=4)doSwitch(s.id,s.v)},
   async copyCode(){const c=fam().inviteCode||'';try{await navigator.clipboard.writeText(c);toast('اتنسخ ✓')}catch(e){toast('الكود: '+c)}},
   async newCode(){try{const c=await rpc('new_invite',{p_token:ST.token});ST.d.family=Object.assign({},ST.d.family,{inviteCode:c});render();toast('اتعمل كود جديد ✓')}catch(e){toast(errMsg(e.code),'bad')}},
-  speakBal(){const me=meM();if(!me)return;const b=bal(walletOf(me));speak(`${me.role==='husband'?'رصيد البيت':isParent(me)?'معاكي':'معاك'} ${sayMoney(b)}`)},
+  speakBal(){const me=meM();if(!me)return;const b=bal(walletOf(me));speak(`${me.role==='husband'?'مع '+wifeName():isParent(me)?'معاكي':'معاك'} ${sayMoney(b)}`)},
   dis(d){const me=meM();const k='masroofi_dis_'+me.id;const a=LS.get(k,[]);a.push(d.k);LS.set(k,a.slice(-300));render()},
   undo(){if(S.toast&&S.toast.undo){S.toast.undo();$('#toast').innerHTML='';S.toast=null;toast('اتلغى')}},
   pref(d){P[d.k]=d.k==='digits'?d.v:!!d.v;savePrefs();render()},
