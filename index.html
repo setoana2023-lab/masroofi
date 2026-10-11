@@ -378,7 +378,7 @@ function applyLocal(op,coll,id,data){
 }
 function applyPull(r,full){
   ST.meId=r.me;LS.set('mf_me',r.me);
-  if(r.fam&&r.fam!==ST.fam){ST.fam=r.fam;LS.set('mf_fam',r.fam);rtStart()}
+  if(r.fam&&r.fam!==ST.fam){rtStop();ST.fam=r.fam;LS.set('mf_fam',r.fam);rtStart()}
   const fresh=full?[]:(r.docs||[]).filter(x=>x.coll==='tx'&&!x.deleted&&x.data&&x.data.by!==r.me&&!ST.d.tx[x.id]);
   ST.d.family=r.family;
   const M={};(r.members||[]).forEach(m=>{M[m.id]=m});ST.d.members=M;
@@ -594,12 +594,12 @@ function authV(){
   const back=`<button class="ghost" data-a="auth" data-v="">→ رجوع</button>`;
   const pp=(lbl)=>`<label class="fld">رقم الموبايل<input class="inp" id="a_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx" dir="ltr"></label><label class="fld">${lbl}<input class="inp" id="a_pin" type="password" inputmode="numeric" maxlength="6" autocomplete="${a==='login'?'current-password':'new-password'}" dir="ltr"></label>`;
   const busy=S.busy?'disabled':'';
-  if(!a) return hero+`<div class="stack"><button class="btn pri full big" data-a="auth" data-v="new"><span class="bi">🏠</span>بيت جديد</button><button class="btn full" data-a="auth" data-v="login">عندي حساب، دخول</button><button class="btn alt full" data-a="auth" data-v="join">معايا كود دعوة من البيت</button>${S.installEvt?`<button class="ghost" data-a="install">📲 ثبّت التطبيق على الموبايل</button>`:''}</div>`;
+  if(!a) return hero+`<div class="stack"><button class="btn pri full big" data-a="auth" data-v="new"><span class="bi">🏠</span>أنا أول واحد في البيت</button><small class="muted" style="text-align:center">واحد بس في البيت يعمل كده، والباقيين يدخلوا بكود الدعوة.</small><button class="btn alt full big" data-a="auth" data-v="join"><span class="bi">🔑</span>البيت معمول، معايا كود دعوة</button><button class="btn full" data-a="auth" data-v="login">عندي حساب، دخول</button>${S.installEvt?`<button class="ghost" data-a="install">📲 ثبّت التطبيق على الموبايل</button>`:''}</div>`;
   if(a==='login') return hero+`<div class="card"><h2>دخول</h2>${pp('الرقم السري')}<button class="btn pri full" data-a="doLogin" ${busy}>دخول</button></div>${back}`;
   if(a==='join'){const role=S.joinRole||'wife';
     return hero+`<div class="card"><h2>انضم لبيتك</h2><label class="fld">كود الدعوة (هتلاقيه عند الزوج أو الزوجة في «المزيد»)<input class="inp" id="a_code" maxlength="6" autocapitalize="characters" autocomplete="off" dir="ltr" placeholder="ABC123"></label><b>انت مين؟</b><div class="rowflex">${['wife','husband','son','daughter','helper'].map(r=>`<button class="chip ${role===r?'on':''}" data-a="joinRole" data-r="${r}">${EM[r]} ${ROLE[r]}</button>`).join('')}</div><label class="fld">اسمك زي ما الأسرة بتناديك<input class="inp" id="a_name" maxlength="40" autocomplete="off"></label>${pp('اختار رقم سري (٤ لـ ٦ أرقام)')}<button class="btn pri full" data-a="doJoin" ${busy}>دخول</button></div>${back}`}
   const role=S.setupRole||'husband';
-  return hero+`<div class="card">
+  return hero+`<div class="notice">⚠️ لو ${role==='wife'?'جوزك':'مراتك'} عمل${role==='wife'?'':'ت'} البيت قبل كده، متعملش بيت جديد، وإلا كل واحد هيبقى له بيت لوحده ومش هتشوفوا مصاريف بعض. ادخل بكود الدعوة اللي عنده في «المزيد».<br><button class="btn alt full" style="margin-top:8px" data-a="auth" data-v="join">🔑 معايا كود دعوة</button></div><div class="card">
     <h2>انت مين؟</h2>
     <div class="grid2"><button class="btn ${role==='husband'?'pri':''}" data-a="setRole" data-r="husband">👨 الزوج</button><button class="btn ${role==='wife'?'pri':''}" data-a="setRole" data-r="wife">👩 الزوجة</button></div>
     <label class="fld">اسمك زي ما الأسرة بتناديك<input class="inp" id="s_name" maxlength="40" placeholder="${role==='husband'?'مثلاً: أبو أحمد':'مثلاً: أم أحمد'}" autocomplete="off"></label>
@@ -631,8 +631,15 @@ function tabsV(me){
 }
 
 /* home */
+function spouseV(me){
+  if(!isParent(me))return '';const other=me.role==='husband'?'wife':'husband';
+  if(membersBy(m=>m.role===other).length)return '';
+  const c=fam().inviteCode||'',who=other==='wife'?'الزوجة':'الزوج';
+  const msg=`ادخل على مصروفي ${appLink()} واختار «البيت معمول، معايا كود دعوة» واكتب الكود: ${c}`;
+  return `<div class="notice"><b>${who} لسه ما انضم${other==='wife'?'تش':'ش'} لبيتك.</b> عشان تشوفوا مصاريف بعض لحظة بلحظة، ابعت${other==='wife'?'لها':'له'} كود الدعوة <b dir="ltr">${esc(c)}</b>، و${other==='wife'?'تختار':'يختار'} «البيت معمول، معايا كود دعوة»، مش «بيت جديد».<div class="grid2" style="margin-top:8px"><a class="btn pri" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">ابعته واتساب</a><button class="btn" data-a="copyCode">انسخ الكود</button></div></div>`;
+}
 function homeV(me){
-  const p=[alertsV(me),envV(me)];
+  const p=[alertsV(me),spouseV(me),envV(me)];
   if(me.role==='husband'){
     p.push(`<div class="grid2"><button class="btn pri big" data-a="openPay"><span class="bi">💵</span>ادفع مصروف</button><button class="btn big alt" data-a="openRec"><span class="bi">✍️</span>سجّل مصروف</button></div>`);
     p.push(remindersV(me),paceV(),catBarsV(),recentV(me,5));
