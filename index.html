@@ -369,7 +369,7 @@ async function rpc(fn,args){
   if(!r.ok){const er=new Error('rpc');er.code=r.status>=500?'offline':((j&&j.message)||'http_'+r.status);throw er}
   return j;
 }
-const ERR={bad_pin:'الرقم السري لازم من ٤ لـ ٦ أرقام.',bad_phone:'رقم الموبايل مش صحيح.',phone_used:'الرقم ده متسجل قبل كده. ادخل من «عندي حساب».',bad_name:'اكتب الاسم.',bad_code:'كود الدعوة غلط. اتأكد منه وجرّب تاني.',role_taken:'الدور ده متسجل في البيت قبل كده.',bad_login:'رقم الموبايل أو الرقم السري غلط.',locked:'محاولات غلط كتير. استنى ربع ساعة وجرّب تاني.',forbidden:'مش مسموح لك تعمل ده.',too_late:'عدّى أكتر من ٢٤ ساعة، مينفعش تعديل.',need_pin:'الفرد ده محتاج رقم سري.',bad_pin_try:'الرقم السري غلط.',not_found:'الحاجة دي مش موجودة.',offline:'مفيش نت دلوقتي. جرّب تاني لما النت يرجع.',bad_role:'اختار انت مين.'};
+const ERR={bad_pin:'الرقم السري لازم من ٤ لـ ٦ أرقام.',bad_phone:'رقم الموبايل مش صحيح.',phone_used:'الرقم ده متسجل قبل كده. ادخل من «دخول» بنفس الرقم.',not_invited:'الرقم ده مش متسجل. لو انتي الزوجة، خلّي جوزك يكتب رقمك في التطبيق الأول.',bad_name:'اكتب الاسم.',bad_code:'كود الدعوة غلط. اتأكد منه وجرّب تاني.',role_taken:'الدور ده متسجل في البيت قبل كده.',bad_login:'رقم الموبايل أو الرقم السري غلط.',locked:'محاولات غلط كتير. استنى ربع ساعة وجرّب تاني.',forbidden:'مش مسموح لك تعمل ده.',too_late:'عدّى أكتر من ٢٤ ساعة، مينفعش تعديل.',need_pin:'الفرد ده محتاج رقم سري.',bad_pin_try:'الرقم السري غلط.',not_found:'الحاجة دي مش موجودة.',offline:'مفيش نت دلوقتي. جرّب تاني لما النت يرجع.',bad_role:'اختار انت مين.'};
 function errMsg(c){return ERR[c]||'حصلت مشكلة. جرّب تاني.'}
 function applyLocal(op,coll,id,data){
   if(op==='receipt')return;
@@ -595,16 +595,21 @@ function authV(){
   const back=`<button class="ghost" data-a="auth" data-v="">→ رجوع</button>`;
   const pp=(lbl)=>`<label class="fld">رقم الموبايل<input class="inp" id="a_phone" type="tel" inputmode="tel" autocomplete="tel" placeholder="01xxxxxxxxx" dir="ltr"></label><label class="fld">${lbl}<input class="inp" id="a_pin" type="password" inputmode="numeric" maxlength="6" autocomplete="${a==='login'?'current-password':'new-password'}" dir="ltr"></label>`;
   const busy=S.busy?'disabled':'';
-  if(!a) return hero+`<div class="stack"><button class="btn pri full big" data-a="auth" data-v="new"><span class="bi">🏠</span>أنا أول واحد في البيت</button><small class="muted" style="text-align:center">واحد بس في البيت يعمل كده، والباقيين يدخلوا بكود الدعوة.</small><button class="btn alt full big" data-a="auth" data-v="join"><span class="bi">🔑</span>البيت معمول، معايا كود دعوة</button><button class="btn full" data-a="auth" data-v="login">عندي حساب، دخول</button>${S.installEvt?`<button class="ghost" data-a="install">📲 ثبّت التطبيق على الموبايل</button>`:''}</div>`;
-  if(a==='login') return hero+`<div class="card"><h2>دخول</h2>${pp('الرقم السري')}<button class="btn pri full" data-a="doLogin" ${busy}>دخول</button></div>${back}`;
-  if(a==='join'){const role=S.joinRole||'wife';
-    return hero+`<div class="card"><h2>انضم لبيتك</h2><label class="fld">كود الدعوة (هتلاقيه عند الزوج أو الزوجة في «المزيد»)<input class="inp" id="a_code" maxlength="6" autocapitalize="characters" autocomplete="off" dir="ltr" placeholder="ABC123"></label><b>انت مين؟</b><div class="rowflex">${['wife','husband','son','daughter','helper'].map(r=>`<button class="chip ${role===r?'on':''}" data-a="joinRole" data-r="${r}">${EM[r]} ${ROLE[r]}</button>`).join('')}</div><label class="fld">اسمك زي ما الأسرة بتناديك<input class="inp" id="a_name" maxlength="40" autocomplete="off"></label>${pp('اختار رقم سري (٤ لـ ٦ أرقام)')}<button class="btn pri full" data-a="doJoin" ${busy}>دخول</button></div>${back}`}
-  const role=S.setupRole||'husband';
-  return hero+`<div class="notice">⚠️ لو ${role==='wife'?'جوزك':'مراتك'} عمل${role==='wife'?'':'ت'} البيت قبل كده، متعملش بيت جديد، وإلا كل واحد هيبقى له بيت لوحده ومش هتشوفوا مصاريف بعض. ادخل بكود الدعوة اللي عنده في «المزيد».<br><button class="btn alt full" style="margin-top:8px" data-a="auth" data-v="join">🔑 معايا كود دعوة</button></div><div class="card">
-    <h2>انت مين؟</h2>
-    <div class="grid2"><button class="btn ${role==='husband'?'pri':''}" data-a="setRole" data-r="husband">👨 الزوج</button><button class="btn ${role==='wife'?'pri':''}" data-a="setRole" data-r="wife">👩 الزوجة</button></div>
-    <label class="fld">اسمك زي ما الأسرة بتناديك<input class="inp" id="s_name" maxlength="40" placeholder="${role==='husband'?'مثلاً: أبو أحمد':'مثلاً: أم أحمد'}" autocomplete="off"></label>
+  if(!a) return hero+`<div class="stack"><button class="btn pri full big" data-a="auth" data-v="new"><span class="bi">👨</span>أنا الزوج، أول مرة</button><button class="btn alt full big" data-a="auth" data-v="wife"><span class="bi">👩</span>أنا الزوجة</button><button class="btn full" data-a="auth" data-v="login">عندي حساب، دخول</button>${S.installEvt?`<button class="ghost" data-a="install">📲 ثبّت التطبيق على الموبايل</button>`:''}</div>
+  <div class="card"><h2>إزاي بيشتغل؟</h2><ol style="margin:0;padding-inline-start:20px;display:grid;gap:6px"><li>الزوج يعمل البيت ويكتب رقم موبايل مراته.</li><li>الزوجة تفتح التطبيق، تختار «أنا الزوجة»، وتكتب رقمها.</li><li>الزوج يدفع لمراته، وهي تسجّل كل مصروف، ويظهر عنده في نفس اللحظة.</li></ol></div>`;
+  if(a==='login'||a==='wife') return hero+`<div class="card"><h2>${a==='wife'?'ادخلي برقم موبايلك':'دخول'}</h2>${a==='wife'?`<div class="hint">جوزك لازم يكون كاتب رقمك في التطبيق. أول مرة تدخلي: اختاري رقم سري جديد من ٤ لـ ٦ أرقام وافتكريه.</div>`:''}${pp(a==='wife'?'الرقم السري (أول مرة: اختاري رقم جديد)':'الرقم السري')}<button class="btn pri full" data-a="doLogin" ${busy}>دخول</button></div>${back}`;
+  return hero+`<div class="card">
+    <h2>👨 بيت جديد</h2>
+    <label class="fld">اسمك<input class="inp" id="s_name" maxlength="40" placeholder="مثلاً: أبو أحمد" autocomplete="off"></label>
     ${pp('اختار رقم سري (٤ لـ ٦ أرقام)')}
+  </div>
+  <div class="card">
+    <h2>👩 مراتك</h2>
+    <label class="fld">اسمها زي ما بتناديها<input class="inp" id="s_wname" maxlength="40" placeholder="مثلاً: أم أحمد" autocomplete="off"></label>
+    <label class="fld">رقم موبايلها<input class="inp" id="s_wphone" type="tel" inputmode="tel" dir="ltr" placeholder="01xxxxxxxxx" autocomplete="off"></label>
+    <small>هي هتدخل بالرقم ده وتختار رقمها السري بنفسها.</small>
+  </div>
+  <div class="card">
     <label class="fld">اسم البيت<input class="inp" id="s_fam" maxlength="40" placeholder="مثلاً: بيت أبو أحمد" autocomplete="off"></label>
     <label class="fld">العملة<select class="inp" id="s_cur">${CURS.map(c=>`<option value="${c[0]}">${c[2]} · ${c[1]}</option>`).join('')}</select></label>
     <label class="fld">المصروف الشهري المعتاد<input class="inp" id="s_monthly" inputmode="decimal" placeholder="مثلاً: 8000"></label>
@@ -633,11 +638,15 @@ function tabsV(me){
 
 /* home */
 function spouseV(me){
-  if(!isParent(me))return '';const other=me.role==='husband'?'wife':'husband';
-  if(membersBy(m=>m.role===other).length)return '';
-  const c=fam().inviteCode||'',who=other==='wife'?'الزوجة':'الزوج';
-  const msg=`ادخل على مصروفي ${appLink()} واختار «البيت معمول، معايا كود دعوة» واكتب الكود: ${c}`;
-  return `<div class="notice"><b>${who} لسه ما انضم${other==='wife'?'تش':'ش'} لبيتك.</b> عشان تشوفوا مصاريف بعض لحظة بلحظة، ابعت${other==='wife'?'لها':'له'} كود الدعوة <b dir="ltr">${esc(c)}</b>، و${other==='wife'?'تختار':'يختار'} «البيت معمول، معايا كود دعوة»، مش «بيت جديد».<div class="grid2" style="margin-top:8px"><a class="btn pri" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">ابعته واتساب</a><button class="btn" data-a="copyCode">انسخ الكود</button></div></div>`;
+  if(me.role!=='husband')return '';
+  const w=membersBy(m=>m.role==='wife')[0];
+  if(!w)return `<div class="card"><h2>👩 ضيف مراتك</h2><small>اكتب اسمها ورقم موبايلها، وهي تدخل بيه من موبايلها وتشوف الفلوس اللي معاها.</small>
+    <label class="fld">اسمها<input class="inp" id="w_name" maxlength="40" placeholder="مثلاً: أم أحمد"></label>
+    <label class="fld">رقم موبايلها<input class="inp" id="w_phone" type="tel" inputmode="tel" dir="ltr" placeholder="01xxxxxxxxx"></label>
+    <button class="btn pri full" data-a="addWife" ${S.busy?'disabled':''}>ضيفها</button></div>`;
+  if(w.hasPin)return '';
+  const msg=`افتحي مصروفي ${appLink()} واختاري «أنا الزوجة» واكتبي رقم موبايلك واختاري رقم سري.`;
+  return `<div class="notice"><b>${esc(w.name)} لسه ما دخلتش.</b> ابعتلها الرابط، تفتحه وتختار «أنا الزوجة» وتكتب رقمها${w.phoneTail?` (اللي آخره ${esc(dg(w.phoneTail))})`:''}.<div class="grid2" style="margin-top:8px"><a class="btn pri" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">ابعته واتساب</a><button class="btn" data-a="copyLink">انسخ الرابط</button></div></div>`;
 }
 function homeV(me){
   const p=[alertsV(me),spouseV(me),envV(me)];
@@ -806,7 +815,6 @@ function moreV(me){
   ${parent?`<div class="card"><h2>📊 التقرير الشهري</h2><small>الدخل والمصروف لآخر ٦ شهور، وأكبر البنود.</small><button class="btn full" data-a="openReport">افتح التقرير</button></div>`:''}
   ${parent?`<div class="card"><div class="card-h"><h2>📌 المصاريف الثابتة</h2><button class="btn sm" data-a="openFixed">+ أضف</button></div>
     ${F.length?`<div class="rows">${F.map(([id,x])=>`<button class="row" data-a="openFixed" data-id="${id}"><span class="ic">${catOf(x.cat).i}</span><span class="rmain"><span class="rt">${esc(x.name)}${x.off?' (متوقف)':''}</span><span class="rs">${FREQ[x.freq]}${x.freq==='monthly'?' · يوم '+dg(x.day):x.freq==='weekly'?' · '+DAYS[+x.day||0]:''}</span></span><span class="ramt">${money(x.amount,'')}</span></button>`).join('')}</div>`:`<small>زي الإيجار والكهربا واللبن اليومي. هيظهر تذكير في ميعادها، ومفيش حاجة بتتخصم من غير ما حد يأكد.</small>`}</div>`:''}
-  ${parent?inviteV(me):''}
   ${parent?`<div class="card"><div class="card-h"><h2>👨‍👩‍👧 أفراد الأسرة</h2><button class="btn sm" data-a="openMember">+ أضف</button></div><div class="rows">${membersBy().map(m=>`<button class="row" data-a="openMember" data-id="${m.id}"><span class="ic">${EM[m.role]}</span><span class="rmain"><span class="rt">${esc(m.name)}</span><span class="rs">${ROLE[m.role]}${m.hasPin?' · 🔒 برقم سري':''}${m.hasPhone?' · 📱 '+esc(m.phoneTail||''):''}</span></span><span class="muted">›</span></button>`).join('')}</div></div>`:''}
   ${hus?`<div class="card"><h2>⚙️ إعدادات البيت</h2><small>المصروف الشهري، بداية الشهر، العملة، حدود التنبيهات.</small><button class="btn full" data-a="openSettings">افتح الإعدادات</button></div>`:''}
   <div class="card"><h2>👁 طريقة العرض</h2>
@@ -943,7 +951,7 @@ function memberV(s,me){
   ${s.id===me.id||!isParent(m)?`<label class="fld">رقم موبايله ${s.id===me.id?'':'(لو عنده موبايل خاص بيه)'}<input class="inp" id="m_phone" type="tel" inputmode="tel" dir="ltr" placeholder="${m.hasPhone?'••••'+esc(m.phoneTail||''):'01xxxxxxxxx'}"></label>`:''}
   ${kid?`<div class="card"><h2>المصروف المستقل</h2><div class="grid2"><label class="fld">المبلغ<input class="inp" id="m_allow" inputmode="decimal" value="${al?al.amount:''}" placeholder="مثلاً: 50"></label><label class="fld">كل قد إيه؟<select class="inp" id="m_freq">${Object.entries(FREQ).map(([k,v])=>`<option value="${k}" ${(al?al.freq:'daily')===k?'selected':''}>${v}</option>`).join('')}</select></label></div><small>هيظهر للأب والأم تذكير في ميعاده.</small></div>`:''}
   ${role==='helper'?`<div class="card"><h2>العُهدة</h2><label class="fld">المبلغ المعتاد للمشتريات<input class="inp" id="m_float" inputmode="decimal" value="${m.float||''}" placeholder="مثلاً: 500"></label><small>المساعدة بتشوف عُهدتها ومصاريفها بس، وصورة الفاتورة مطلوبة منها لأي مصروف من ${num(+fam().helperReceiptOver||100)} ${cur()} وطالع.</small></div>`:''}
-  ${!s.id?`<div class="hint">${me.role==='husband'?'الزوجة':'الزوج'} تدخل بنفسها من موبايلها بكود الدعوة اللي في «المزيد». الأولاد والمساعدة ممكن تضيفهم هنا ويستخدموا نفس الموبايل، أو يدخلوا بكود الدعوة من موبايلاتهم.</div>`:''}
+  ${!s.id?`<div class="hint">لو ليه موبايل خاص، اكتب رقمه، وهو يدخل بيه ويختار رقمه السري. لو هيستخدم موبايل الأم، حط له رقم سري ويدخل من «تبديل».</div>`:''}
   <button class="btn pri full" data-a="memSave" style="min-height:58px">احفظ</button>
   ${s.id&&s.id!==me.id?`<button class="ghost" data-a="memOff">إيقاف الحساب ده</button>`:''}`;
 }
@@ -1030,12 +1038,23 @@ const A={
   setRole(d){S.setupRole=d.r;render()},
   joinRole(d){S.joinRole=d.r;render()},
   async doRegister(){
-    const role=S.setupRole||'husband',name=val('s_name').trim();
+    const role='husband',name=val('s_name').trim();
     if(!name)return toast('اكتب اسمك الأول','bad');
+    const wname=val('s_wname').trim(),wphone=normDigits(val('s_wphone')).replace(/[^\d+]/g,'');
+    if(wphone&&!wname)return toast('اكتب اسم مراتك','bad');
+    if(wname&&!wphone)return toast('اكتب رقم موبايل مراتك','bad');
+    S.pendingWife=wphone?{name:wname,phone:wphone}:null;
     const fam0={name:val('s_fam').trim()||'بيت '+name,currency:val('s_cur')||'EGP',monthly:parseAmt(val('s_monthly')),startDay:+val('s_day')||1,lowPct:20,bigOver:500,helperReceiptOver:100,kidsNeg:false};
     await authCall('register_family',{p_family:fam0,p_name:name,p_role:role,p_phone:val('a_phone'),p_pin:pinOf('a_pin')},'بيتك جاهز ✓');
   },
   async doLogin(){await authCall('login',{p_phone:val('a_phone'),p_pin:pinOf('a_pin')},'أهلاً بيك ✓')},
+  async addWife(){
+    const name=val('w_name').trim(),phone=normDigits(val('w_phone')).replace(/[^\d+]/g,'');
+    if(!name||!phone)return toast('اكتب اسمها ورقم موبايلها','bad');
+    if(S.busy)return;S.busy=true;render();
+    try{await rpc('save_member',{p_token:ST.token,p_id:null,p_name:name,p_role:'wife',p_phone:phone,p_pin:null,p_extra:{}});S.busy=false;toast(`اتضافت ${name} ✓ ابعتلها الرابط`);pull()}
+    catch(e){S.busy=false;render();toast(errMsg(e.code),'bad')}
+  },
   async doJoin(){
     const name=val('a_name').trim();if(!name)return toast('اكتب اسمك','bad');
     await authCall('join_family',{p_code:val('a_code').trim(),p_name:name,p_role:S.joinRole||'wife',p_phone:val('a_phone'),p_pin:pinOf('a_pin')},'أهلاً بيك في البيت ✓');
@@ -1051,6 +1070,7 @@ const A={
   },
   pinKey(d){const s=S.sheet;if(d.k==='del')s.v=s.v.slice(0,-1);else if(s.v.length<6)s.v+=d.k;render()},
   pinOk(){const s=S.sheet;if(s.v.length>=4)doSwitch(s.id,s.v)},
+  async copyLink(){try{await navigator.clipboard.writeText(appLink());toast('اتنسخ ✓')}catch(e){toast(appLink())}},
   async copyCode(){const c=fam().inviteCode||'';try{await navigator.clipboard.writeText(c);toast('اتنسخ ✓')}catch(e){toast('الكود: '+c)}},
   async newCode(){try{const c=await rpc('new_invite',{p_token:ST.token});ST.d.family=Object.assign({},ST.d.family,{inviteCode:c});render();toast('اتعمل كود جديد ✓')}catch(e){toast(errMsg(e.code),'bad')}},
   speakBal(){const me=meM();if(!me)return;const b=bal(walletOf(me));speak(`${me.role==='husband'?'مع '+wifeName():isParent(me)?'معاكي':'معاك'} ${sayMoney(b)}`)},
@@ -1237,7 +1257,8 @@ async function authCall(fn,args,ok){
   S.busy=true;render();
   try{const r=await rpc(fn,args);S.busy=false;
     if(r&&r.error){render();return toast(errMsg(r.error),'bad')}
-    setSession(r);toast(ok);
+    setSession(r);toast(r.first?'أهلاً بيكي ✓ الرقم السري ده بقى بتاعك، افتكريه':ok);
+    if(S.pendingWife){const w=S.pendingWife;S.pendingWife=null;rpc('save_member',{p_token:r.token,p_id:null,p_name:w.name,p_role:'wife',p_phone:w.phone,p_pin:null,p_extra:{}}).then(()=>pull()).catch(e=>toast(errMsg(e.code),'bad'))}
   }catch(e){S.busy=false;render();toast(errMsg(e.code),'bad')}
 }
 async function doSwitch(id,pin){
