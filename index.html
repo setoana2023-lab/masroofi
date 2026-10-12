@@ -944,6 +944,7 @@ function memberV(s,me){
   const al=s.id?kidAllowance(Object.assign({id:s.id},m)):null;
   const roles=s.id?[role]:['son','daughter','helper'];
   const kid=role==='son'||role==='daughter';
+  if(s.id&&s.id!==me.id&&isParent(m))return spouseSheetV(s,m);
   return `${sheetHead(s.id?'تعديل '+esc(m.name):'أضف فرد للأسرة')}
   <div class="rowflex">${roles.map(r=>`<button class="chip ${role===r?'on':''}" data-a="memRole" data-r="${r}">${EM[r]} ${ROLE[r]}</button>`).join('')}</div>
   <label class="fld">الاسم<input class="inp" id="m_name" maxlength="30" value="${esc(m.name||'')}" placeholder="${kid?'مثلاً: أحمد':role==='helper'?'مثلاً: أم سيد':'الاسم'}"></label>
@@ -953,7 +954,24 @@ function memberV(s,me){
   ${role==='helper'?`<div class="card"><h2>العُهدة</h2><label class="fld">المبلغ المعتاد للمشتريات<input class="inp" id="m_float" inputmode="decimal" value="${m.float||''}" placeholder="مثلاً: 500"></label><small>المساعدة بتشوف عُهدتها ومصاريفها بس، وصورة الفاتورة مطلوبة منها لأي مصروف من ${num(+fam().helperReceiptOver||100)} ${cur()} وطالع.</small></div>`:''}
   ${!s.id?`<div class="hint">لو ليه موبايل خاص، اكتب رقمه، وهو يدخل بيه ويختار رقمه السري. لو هيستخدم موبايل الأم، حط له رقم سري ويدخل من «تبديل».</div>`:''}
   <button class="btn pri full" data-a="memSave" style="min-height:58px">احفظ</button>
+  ${s.id&&s.id!==me.id&&m.hasPin?resetV(s,m):''}
   ${s.id&&s.id!==me.id?`<button class="ghost" data-a="memOff">إيقاف الحساب ده</button>`:''}`;
+}
+function resetV(s,m){
+  const f=m.role==='wife'||m.role==='daughter'||m.role==='helper';
+  return s.confirmReset?`<div class="notice">${esc(m.name)} ${f?'مش هتقدر تدخل':'مش هيقدر يدخل'} بالرقم السري القديم. أول ما ${f?'تفتح التطبيق وتكتب رقم موبايلها':'يفتح التطبيق ويكتب رقم موبايله'}، الرقم السري اللي ${f?'هتكتبه':'هيكتبه'} يبقى الجديد.</div><div class="grid2"><button class="btn danger" data-a="resetYes">أيوه امسحه</button><button class="btn" data-a="resetNo">لأ</button></div>`
+    :`<button class="btn full" data-a="resetAsk">🔑 ${f?'نسيت':'نسي'} الرقم السري؟ امسحه</button>`;
+}
+function spouseSheetV(s,m){
+  const her=m.role==='wife';
+  return `${sheetHead(`${EM[m.role]} ${esc(m.name)}`)}
+  ${m.hasPin?`<p style="margin:0">${her?'دخلت':'دخل'} التطبيق برقم موبايل${m.phoneTail?` آخره <b dir="ltr">${esc(dg(m.phoneTail))}</b>`:''}.</p>
+    ${resetV(s,m)}
+    <small>لو الرقم نفسه غلط: امسح الرقم السري الأول، وبعدها تقدر تصلّح الرقم والاسم.</small>`
+  :`<div class="hint">${her?'لسه ما دخلتش':'لسه ما دخلش'}. تقدر تصلّح ${her?'اسمها ورقمها':'اسمه ورقمه'} هنا.</div>
+    <label class="fld">الاسم<input class="inp" id="m_name" maxlength="30" value="${esc(m.name||'')}"></label>
+    <label class="fld">رقم الموبايل (دلوقتي آخره ${esc(dg(m.phoneTail||'—'))})<input class="inp" id="m_phone" type="tel" inputmode="tel" dir="ltr" placeholder="01xxxxxxxxx"></label>
+    <button class="btn pri full" data-a="memSave" style="min-height:58px">احفظ</button>`}`;
 }
 function fixedV(s,me){
   const x=s.id?ST.d.fixed[s.id]||{}:{freq:'monthly',day:1,cat:'rent'};
@@ -1199,7 +1217,7 @@ const A={
   async memSave(){
     const me=meM(),s=S.sheet;const m=s.id?mem(s.id)||{}:{};const role=s.role||m.role;
     const name=val('m_name').trim();if(!name)return toast('اكتب الاسم','bad');
-    const pin=normDigits(val('m_pin')).replace(/\D/g,'');if(pin&&(pin.length<4||pin.length>6))return toast('الرقم السري لازم من ٤ لـ ٦ أرقام','bad');
+    const pin=document.getElementById('m_pin')?normDigits(val('m_pin')).replace(/\D/g,''):'';if(pin&&(pin.length<4||pin.length>6))return toast('الرقم السري لازم من ٤ لـ ٦ أرقام','bad');
     const phone=normDigits(val('m_phone')).replace(/[^\d+]/g,'');
     const extra={};if(role==='helper')extra.float=parseAmt(val('m_float'));
     if(!s.id)extra.createdAt=Date.now();
@@ -1217,6 +1235,11 @@ const A={
     }
     closeSheet();toast(s.id?'اتحفظ ✓':`اتضاف ${name} ✓`);pull();
   },
+  resetAsk(){S.sheet.confirmReset=true;render()},
+  resetNo(){S.sheet.confirmReset=false;render()},
+  async resetYes(){const s=S.sheet,m=mem(s.id)||{};if(S.busy)return;S.busy=true;
+    try{await rpc('reset_pin',{p_token:ST.token,p_id:s.id});S.busy=false;closeSheet();toast(`اتمسح ✓ ${m.name} ${m.role==='husband'||m.role==='son'?'يدخل':'تدخل'} برقم الموبايل ويختار رقم سري جديد`);pull()}
+    catch(e){S.busy=false;toast(errMsg(e.code),'bad')}},
   async memOff(){const s=S.sheet;closeSheet();try{await rpc('set_member_off',{p_token:ST.token,p_id:s.id,p_off:true});toast('اتوقف الحساب');pull()}catch(e){toast(errMsg(e.code),'bad')}},
 
   openFixed(d){openSheet({k:'fixed',id:d.id||null})},
